@@ -23,7 +23,7 @@ export async function GET(){
       db.query('select pr.id,pr.amount,pr.currency,pr.status,pr.created_at as "createdAt",p.name as "partnerName" from payout_requests pr join partners p on p.id=pr.partner_id order by pr.created_at desc limit 100'),
       db.query('select (select count(*)::int from partners) partners,(select count(*)::int from leads) leads,(select count(*)::int from commissions) commissions,(select count(*)::int from payout_requests) payouts')
     ]);
-    return NextResponse.json({ok:true,partners:partners.rows,banks:banks.rows,offers:offers.rows,leads:leads.rows,commissions:commissions.rows,payouts:payouts.rows,stats:stats.rows[0]});
+    return NextResponse.json({ok:true,partners:partners,banks:banks,offers:offers,leads:leads,commissions:commissions,payouts:payouts,stats:stats[0]});
   }catch(e){console.error(e);return NextResponse.json({ok:false,error:"Не удалось загрузить админ-данные"},{status:500})}
 }
 
