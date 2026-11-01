@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const partnerCode = request.nextUrl.searchParams.get("partnerCode") || "nikita";
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) return NextResponse.json({ ok: false, error: "Требуется авторизация" }, { status: 401 });
+    const partnerCode = String((session.user as { partnerCode?: string }).partnerCode || session.user.id);
     const db = sql();
     const rows = await db`
       select
@@ -39,11 +42,13 @@ export async function POST(request: NextRequest) {
     const companyName = String(body.companyName || "").trim();
     if (!companyName) return NextResponse.json({ ok: false, error: "Укажите название компании" }, { status: 400 });
 
-    const partnerCode = String(body.partnerCode || "nikita").trim();
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) return NextResponse.json({ ok: false, error: "Требуется авторизация" }, { status: 401 });
+    const partnerCode = String((session.user as { partnerCode?: string }).partnerCode || session.user.id).trim();
     const db = sql();
     const partners = await db`select id from partners where partner_code = ${partnerCode} limit 1`;
     if (!partners.length) {
-      await db`insert into partners (partner_code, name, status) values (${partnerCode}, ${body.partnerName || partnerCode}, 'active')`;
+      await db`insert into partners (partner_code, name, status) values (${partnerCode}, ${session.user.name || partnerCode}, 'active')`;
     }
     const partner = await db`select id from partners where partner_code = ${partnerCode} limit 1`;
 
@@ -54,7 +59,7 @@ export async function POST(request: NextRequest) {
       ) values (
         ${partner[0].id}, ${offerId}, ${companyName},
         ${body.contactName || null}, ${body.phone || null}, ${body.email || null},
-        ${body.inn || null}, ${body.source || "partner_cabinet"}, ${JSON.stringify(body.metadata || {})}
+        ${body.inn || null}, ${"partner_cabinet"}, ${JSON.stringify(body.metadata || {})}
       )
       returning id, company_name as "companyName", status, created_at as "createdAt"
     `;
